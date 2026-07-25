@@ -1,0 +1,61 @@
+name: Pester Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Pester (PowerShell, Pester 6.0.1)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Pester 6.0.1
+        shell: pwsh
+        run: |
+          Install-Module Pester -RequiredVersion 6.0.1 -Force -SkipPublisherCheck -Scope CurrentUser
+
+      - name: Run Pester tests
+        shell: pwsh
+        run: |
+          Import-Module Pester -RequiredVersion 6.0.1 -Force
+          $config = New-PesterConfiguration
+          $config.Run.Path = './win_perf_tune.Tests.ps1'
+          $config.Output.Verbosity = 'Detailed'
+          $config.Run.PassThru = $true
+          $result = Invoke-Pester -Configuration $config
+
+          # 生成 JUnit 风格结果报告（Pester 6 已移除内置 TestResult 导出，自行转换）
+          $sb = New-Object System.Text.StringBuilder
+          $sb.AppendLine('<?xml version="1.0" encoding="UTF-8"?>') | Out-Null
+          $tests = $result.Tests
+          $total = $tests.Count
+          $failures = ($tests | Where-Object { $_.Result -eq 'Failed' }).Count
+          $sb.AppendFormat('<testsuite name="win_perf_tune" tests="{0}" failures="{1}" errors="0">', $total, $failures) | Out-Null
+          $sb.AppendLine() | Out-Null
+          foreach ($t in $tests) {
+            $name  = [System.Security.SecurityElement]::Escape([string]$t.Name)
+            $class = [System.Security.SecurityElement]::Escape([string]$t.Block)
+            $time  = $t.Duration.TotalSeconds
+            $sb.AppendFormat('  <testcase name="{0}" classname="{1}" time="{2}">', $name, $class, $time) | Out-Null
+            if ($t.Result -eq 'Failed') {
+              $msg = [System.Security.SecurityElement]::Escape([string]$t.ErrorRecord.DisplayErrorMessage)
+              $sb.AppendFormat('<failure message="{0}">{0}</failure>', $msg) | Out-Null
+            }
+            $sb.AppendLine('  </testcase>') | Out-Null
+          }
+          $sb.AppendLine('</testsuite>') | Out-Null
+          Set-Content -Path 'test-results.xml' -Value $sb.ToString() -Encoding UTF8
+
+          if ($result.FailedCount -gt 0) { exit 1 }
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pester-test-results
+          path: test-results.xml
