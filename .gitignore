@@ -1,0 +1,14 @@
+# PowerShell
+*.ps1bak
+
+# runtime logs (generated)
+logs/
+
+# internal working memory (do not publish)
+.workbuddy/
+
+# editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
