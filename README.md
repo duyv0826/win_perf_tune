@@ -84,10 +84,12 @@ Install-Module Pester -Scope CurrentUser -Force   # 首次安装
 Invoke-Pester -Path .\win_perf_tune.Tests.ps1
 ```
 
-> 若本机同时存在系统目录下的 Pester 3.x（Windows 自带），请先隔离模块路径仅保留 6.x
-> 所在用户模块目录，避免 `Mock` / `Should` 命令被旧版解析：
+> 若本机同时存在系统目录下的 Pester 3.x（Windows 自带），请先把用户目录下的 6.x 前置，
+> 避免 `Mock` / `Should` 命令被旧版解析（**仅前置用户模块目录、不重建整条 PSModulePath**，以免误删用户模块目录）：
 > ```powershell
-> $env:PSModulePath = "$HOME\Documents\WindowsPowerShell\Modules" + ';' + ($env:PSModulePath -split ';' | Where-Object { $_ -and $_ -notmatch 'Program Files\\WindowsPowerShell\\Modules' }) -join ';'
+> $userMods = "$HOME\Documents\WindowsPowerShell\Modules"
+> $dirs = $env:PSModulePath -split ';' | Where-Object { $_ }
+> if ($userMods -notin $dirs) { $env:PSModulePath = $userMods + ';' + $env:PSModulePath }
 > Import-Module Pester -RequiredVersion 6.0.1 -Force
 > Invoke-Pester -Path .\win_perf_tune.Tests.ps1
 > ```
