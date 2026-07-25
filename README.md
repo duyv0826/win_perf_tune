@@ -1,6 +1,30 @@
 # Windows 性能优化脚本（win_perf_tune.ps1）
 
+![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-009C9C?logo=powershell&logoColor=white)
+![Pester](https://img.shields.io/badge/Pester-6.0.1-blue)
+![Tests](https://img.shields.io/badge/Tests-14%20passed-brightgreen)
+![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D6?logo=windows&logoColor=white)
+
 一个 Windows 10/11「安全清理 + 前后指标对比」演示脚本，设计原则：**只读优先、写操作可控、可回滚、高危项默认关闭**。
+
+## 使用流程
+
+```mermaid
+flowchart TD
+    A[开始: 管理员 PowerShell, cd 到脚本目录] --> B{选择运行模式}
+    B -->|"先看流程 零改动"| C["win_perf_tune.ps1 -WhatIf"]
+    B -->|"日常维护 默认安全"| D["win_perf_tune.ps1"]
+    B -->|"已知风险 需进一步调优"| E["win_perf_tune.ps1 -ApplyRisky"]
+    C --> L[仅打印将做什么, 不修改任何内容]
+    D --> F[创建系统还原点并验证]
+    E --> G{当天 24h 内是否已建还原点?}
+    G -->|"是 已限流"| H[还原点创建被限流, 优雅降级]
+    G -->|"否 当天首次"| I[还原点创建并验证]
+    F --> J[安全清理: DNS / 临时 / 回收站 / DISM]
+    H --> J
+    I --> J
+    J --> K[打印优化前后对比表, 可用还原点回滚]
+```
 
 ## 运行方式
 
